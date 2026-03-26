@@ -23,6 +23,7 @@ correctness risk (e.g., forgetting one of the 3 audit hooks).
 ## Files
 
 ### `aop_shell_tool.rs`
+
 Refactors `src/tools/shell.rs` rate limiting + path scope + audit into 3 composable aspects:
 - **RateLimitAspect** — replaces the 2 inline `is_rate_limited()` / `record_action()` calls (28 files)
 - **ToolScopeAspect** — replaces `forbidden_path_argument()` per-call checks (65 files)
@@ -32,6 +33,7 @@ Before: `execute()` has ~120 LOC with ~50 LOC crosscutting.
 After: `execute()` has ~8 LOC of pure business logic.
 
 ### `aop_approval_gate.rs`
+
 Refactors `ApprovalManager` (scattered across 17+ files) into a single
 `HumanApprovalAspect` with pluggable channels (Stdio, Handler closure,
 AutoApprove, AutoDeny) and a session allowlist.
@@ -39,6 +41,7 @@ AutoApprove, AutoDeny) and a session allowlist.
 Mirrors `src/approval/mod.rs` behavior while centralizing it in one reusable aspect.
 
 ### `aop_audit_trail.rs`
+
 Refactors manual `AuditLogger` calls (12 tool files × ~5 LOC each) into a
 `ToolCallAuditAspect` with pluggable storage. Guarantees consistent
 before+after+error coverage — eliminates the correctness risk of partial
