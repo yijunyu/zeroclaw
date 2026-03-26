@@ -319,15 +319,7 @@ impl LeakDetector {
         let media_re = MEDIA_MARKER_PATTERN.get_or_init(|| {
             Regex::new(r"\[(IMAGE|VIDEO|VOICE|AUDIO|DOCUMENT|FILE):[^\]]*\]").unwrap()
         });
-        let content_stripped = url_re.replace_all(content, "");
-        let content_without_urls = media_re.replace_all(&content_stripped, "");
-
-        // Strip media markers (e.g. [IMAGE:/path/to/file.png]) before extracting
-        // tokens so that local file paths inside markers are not mistaken for
-        // high-entropy credentials.
-        static MEDIA_MARKER_PATTERN: OnceLock<Regex> = OnceLock::new();
-        let media_re = MEDIA_MARKER_PATTERN
-            .get_or_init(|| Regex::new(r"\[(IMAGE|VIDEO|DOCUMENT|VOICE|AUDIO):[^\]]*\]").unwrap());
+        let content_without_urls = url_re.replace_all(content, "");
         let content_stripped = media_re.replace_all(&content_without_urls, "");
 
         let tokens = extract_candidate_tokens(&content_stripped);
