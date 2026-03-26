@@ -319,10 +319,10 @@ impl LeakDetector {
         let media_re = MEDIA_MARKER_PATTERN.get_or_init(|| {
             Regex::new(r"\[(IMAGE|VIDEO|VOICE|AUDIO|DOCUMENT|FILE):[^\]]*\]").unwrap()
         });
-        let content_without_urls = url_re.replace_all(content, "");
-        let content_stripped = media_re.replace_all(&content_without_urls, "");
+        let content_stripped = url_re.replace_all(content, "");
+        let content_without_urls = media_re.replace_all(&content_stripped, "");
 
-        let tokens = extract_candidate_tokens(&content_stripped);
+        let tokens = extract_candidate_tokens(&content_without_urls);
 
         for token in tokens {
             if token.len() >= ENTROPY_TOKEN_MIN_LEN {
