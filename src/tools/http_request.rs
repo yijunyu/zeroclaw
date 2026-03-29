@@ -337,14 +337,6 @@ impl Tool for HttpRequestTool {
             });
         }
 
-        if !self.security.record_action() {
-            return Ok(ToolResult {
-                success: false,
-                output: String::new(),
-                error: Some("Action blocked: rate limit exceeded".into()),
-            });
-        }
-
         let url = match self.validate_url(url) {
             Ok(v) => v,
             Err(e) => {
@@ -595,6 +587,53 @@ fn is_non_global_v6(v6: std::net::Ipv6Addr) -> bool {
         || (segs[0] & 0xffc0) == 0xfe80   // Link-local (fe80::/10)
         || (segs[0] == 0x2001 && segs[1] == 0x0db8) // Documentation (2001:db8::/32)
         || v6.to_ipv4_mapped().is_some_and(is_non_global_v4)
+}
+
+/// Construct an `HttpRequestTool` wrapped in a `RateLimitedTool`.
+pub fn wrapped_http_request(
+    security: Arc<SecurityPolicy>,
+    allowed_domains: Vec<String>,
+    max_response_size: usize,
+    timeout_secs: u64,
+    allow_private_hosts: bool,
+) -> super::wrappers::RateLimitedTool<HttpRequestTool> {
+    super::wrappers::RateLimitedTool::new(
+        HttpRequestTool::new(
+            security.clone(),
+            allowed_domains,
+            max_response_size,
+            timeout_secs,
+            allow_private_hosts,
+        ),
+        security,
+    )
+}
+
+/// Construct an `HttpRequestTool` (with config-reload support) wrapped in a `RateLimitedTool`.
+#[allow(clippy::too_many_arguments)]
+pub fn wrapped_http_request_with_config(
+    security: Arc<SecurityPolicy>,
+    allowed_domains: Vec<String>,
+    max_response_size: usize,
+    timeout_secs: u64,
+    allow_private_hosts: bool,
+    config_path: std::path::PathBuf,
+    secrets_encrypt: bool,
+    secrets: std::collections::HashMap<String, String>,
+) -> super::wrappers::RateLimitedTool<HttpRequestTool> {
+    super::wrappers::RateLimitedTool::new(
+        HttpRequestTool::new_with_config(
+            security.clone(),
+            allowed_domains,
+            max_response_size,
+            timeout_secs,
+            allow_private_hosts,
+            config_path,
+            secrets_encrypt,
+            secrets,
+        ),
+        security,
+    )
 }
 
 #[cfg(test)]
@@ -858,13 +897,13 @@ mod tests {
             max_actions_per_hour: 0,
             ..SecurityPolicy::default()
         });
-        let tool = HttpRequestTool::new(security, vec!["example.com".into()], 1_000_000, 30, false);
+        let tool = wrapped_http_request(security, vec!["example.com".into()], 1_000_000, 30, false);
         let result = tool
             .execute(json!({"url": "https://example.com"}))
             .await
             .unwrap();
         assert!(!result.success);
-        assert!(result.error.unwrap().contains("rate limit"));
+        assert!(result.error.unwrap().contains("Rate limit"));
     }
 
     #[test]
